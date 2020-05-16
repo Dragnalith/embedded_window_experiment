@@ -1,0 +1,1 @@
+- Using `SetWindowPos` with `HWND_TOPMOST` and `SWP_NOACTIVATE` for the child window will give the impression the child window does not lose focus.
