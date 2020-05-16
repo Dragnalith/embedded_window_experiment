@@ -5,6 +5,9 @@
 #include "WindowsProject1.h"
 
 #include <string>
+#include <atomic>
+#include <assert.h>
+#include <string.h>
 
 #define MAX_LOADSTRING 100
 
@@ -18,6 +21,43 @@ ATOM                MyRegisterClass(HINSTANCE hInstance);
 BOOL                InitInstance(HINSTANCE, int);
 LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
+
+const size_t BUF_SIZE = 256;
+struct Payload {
+	std::atomic<bool> is_set = false;
+	HWND hwnd;
+	HWND parentHwnd;
+	char data[64];
+};
+static_assert(sizeof(Payload) < BUF_SIZE, "");
+
+Payload* g_Payload = nullptr;
+void OpenSharedMemory() {
+	HANDLE hMapFile;
+	LPCTSTR pBuf;
+
+	hMapFile = OpenFileMapping(
+		FILE_MAP_ALL_ACCESS,   // read/write access
+		FALSE,                 // do not inherit the name
+		L"Local\\drgn_test_mem");               // name of mapping object
+
+	if (hMapFile == NULL)
+	{
+		_tprintf(TEXT("Could not open file mapping object (%d).\n"),
+			GetLastError());
+		assert(false);
+	}
+
+	pBuf = (LPTSTR)MapViewOfFile(hMapFile, // handle to map object
+		FILE_MAP_ALL_ACCESS,  // read/write permission
+		0,
+		0,
+		BUF_SIZE);
+
+	g_Payload = (Payload*)pBuf;
+	assert(g_Payload->is_set.load() == false);
+	memcpy(g_Payload->data, "coucou", sizeof("coucou") + 1);
+}
 
 bool show = false;
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
@@ -104,17 +144,30 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
 	hInst = hInstance; // Store instance handle in our global variable
 
-	HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
-		CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, nullptr, nullptr, hInstance, nullptr);
+	if (!show) {
+		OpenSharedMemory();
+	}
+	HWND hWnd = CreateWindowW(szWindowClass, szTitle, show ? WS_OVERLAPPEDWINDOW : WS_CHILD,
+		CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, show ? nullptr : g_Payload->parentHwnd, nullptr, hInstance, nullptr);
 
 	if (!hWnd)
 	{
+		DWORD err = GetLastError();
 		return FALSE;
 	}
 
 	SetWindowPos(hWnd, 0, 400, 400, 300, 300, 0);
+
+
+
 	if (show) {
+
 		ShowWindow(hWnd, nCmdShow);
+	}
+	else {
+		g_Payload->hwnd = hWnd;
+		memcpy(g_Payload->data, "done", sizeof("done") + 1);
+		g_Payload->is_set = true;
 	}
 	UpdateWindow(hWnd);
 

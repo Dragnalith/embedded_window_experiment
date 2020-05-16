@@ -9,7 +9,11 @@ V Fix Resize of main process window
   - When resizing the main window, you have to manually invalidate the embedded window to trigger a repaint
 V Fix embedded window is scaled according to windows global scale option (high dpi)
   - Just make sure that `SetProcessDpiAwarenessContext` is consistent between process
+? How to make the focus on the main window not being visible (right now the main window title bar became grey when losing focus)
+  - You have to create as a WS_CHILD of the parent process (need to transmit the parent process HWND)
 . How do you create a main process child window remaining on top of the embedded window?
-. How to make the focus on the main window not being visible (right now the main window title bar became grey when losing focus)
-  - Try WS_CHILD on the embedded window: Does not work
+  - Much harder than expected. Need to be tried with ws_child for child process window and see if it works
+  - I have tried to create a transparent window but that's not obvious
+  - The child window lose the focus when you click on it and the embedded window is behind. That's weird (whatever the background is transparent or not)
 . How to make child process die when main process die?
+. How to get the child process window handle with pipe or shared memory?

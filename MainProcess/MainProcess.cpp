@@ -6,7 +6,8 @@
 
 #include <assert.h>
 #include <sstream>
-
+#include <atomic>
+#include <string.h>
 #define MAX_LOADSTRING 100
 
 // Global Variables:
@@ -16,9 +17,60 @@ WCHAR szWindowClass[MAX_LOADSTRING];            // the main window class name
 
 // Forward declarations of functions included in this code module:
 ATOM                MyRegisterClass(HINSTANCE hInstance);
+ATOM                MyRegisterClass2(HINSTANCE hInstance);
 BOOL                InitInstance(HINSTANCE, int);
 LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
+
+const size_t BUF_SIZE = 256;
+struct Payload {
+	std::atomic<bool> is_set = false;
+	HWND hwnd;
+	HWND parentHwnd;
+	char data[64];
+};
+static_assert(sizeof(Payload) < BUF_SIZE, "");
+
+Payload* g_Payload = nullptr;
+void CreateSharedMemory(HWND parentHwnd) {
+	HANDLE hMapFile;
+	LPCTSTR pBuf;
+
+	hMapFile = CreateFileMapping(
+		INVALID_HANDLE_VALUE,    // use paging file
+		NULL,                    // default security
+		PAGE_READWRITE,          // read/write access
+		0,                       // maximum object size (high-order DWORD)
+		sizeof(Payload),                // maximum object size (low-order DWORD)
+		L"Local\\drgn_test_mem");                 // name of mapping object
+
+	if (hMapFile == NULL)
+	{
+		DWORD err = GetLastError();
+		_tprintf(TEXT("Could not create file mapping object (%d).\n"),
+			err);
+		assert(false);
+	}
+	pBuf = (LPTSTR)MapViewOfFile(hMapFile,   // handle to map object
+		FILE_MAP_ALL_ACCESS, // read/write permission
+		0,
+		0,
+		BUF_SIZE);
+
+	g_Payload = (Payload*)pBuf;
+	new (g_Payload) Payload();
+	g_Payload->parentHwnd = parentHwnd;
+	assert(g_Payload->is_set.load() == false);
+}
+
+HWND childHwnd = 0;
+bool ReadSharedMemory() {
+	if (g_Payload->is_set.load()) {
+		childHwnd = g_Payload->hwnd;
+		return true;
+	}
+	return false;
+}
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 	_In_opt_ HINSTANCE hPrevInstance,
@@ -36,6 +88,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 	LoadStringW(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
 	LoadStringW(hInstance, IDC_MAINPROCESS, szWindowClass, MAX_LOADSTRING);
 	MyRegisterClass(hInstance);
+	MyRegisterClass2(hInstance);
 
 	// Perform application initialization:
 	if (!InitInstance(hInstance, nCmdShow))
@@ -88,6 +141,30 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
 	return RegisterClassExW(&wcex);
 }
 
+ATOM MyRegisterClass2(HINSTANCE hInstance)
+{
+	WNDCLASSEXW wcex;
+
+	HBRUSH hBrush = CreateSolidBrush(RGB(200, 200, 200));
+
+
+	wcex.cbSize = sizeof(WNDCLASSEX);
+
+	wcex.style = CS_HREDRAW | CS_VREDRAW;
+	wcex.lpfnWndProc = WndProc;
+	wcex.cbClsExtra = 0;
+	wcex.cbWndExtra = 0;
+	wcex.hInstance = hInstance;
+	wcex.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_MAINPROCESS));
+	wcex.hCursor = LoadCursor(nullptr, IDC_ARROW);
+	wcex.hbrBackground = hBrush;
+	wcex.lpszMenuName = 0;
+	wcex.lpszClassName = L"MyClass2";
+	wcex.hIconSm = LoadIcon(wcex.hInstance, MAKEINTRESOURCE(IDI_SMALL));
+
+	return RegisterClassExW(&wcex);
+}
+
 struct handle_data {
 	unsigned long process_id;
 	HWND window_handle = 0;
@@ -116,8 +193,6 @@ HWND find_main_window(unsigned long process_id)
 	return data.window_handle;
 }
 
-HWND childHwnd = 0;
-
 STARTUPINFO si;
 PROCESS_INFORMATION pi;
 void CreateChildWindow() {
@@ -142,13 +217,6 @@ void CreateChildWindow() {
 		&pi);           // Pointer to PROCESS_INFORMATION structure
 
 	assert(b);
-
-	// wait for the child window to have time to be created
-	Sleep(1000);
-
-	childHwnd = find_main_window(pi.dwProcessId);
-	SetWindowLong(childHwnd, GWL_STYLE, 0);
-	assert(childHwnd != 0);
 }
 
 void DestroyChildWindow() {
@@ -165,10 +233,6 @@ void InvalidateChildWindow() {
 	UpdateWindow(childHwnd);
 }
 
-void UpdatePos(HWND hWnd) {
-	SetWindowPos(childHwnd, 0, 0, 0, 200, 200, SWP_NOACTIVATE);
-}
-
 //
 //   FUNCTION: InitInstance(HINSTANCE, int)
 //
@@ -179,6 +243,8 @@ void UpdatePos(HWND hWnd) {
 //        In this function, we save the instance handle in a global variable and
 //        create and display the main program window.
 //
+
+HWND otherHwnd;
 BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
 	hInst = hInstance; // Store instance handle in our global variable
@@ -186,21 +252,39 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 	HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
 		0, 0, 800, 800, nullptr, nullptr, hInstance, nullptr);
 
+
+	HWND hWnd2 = CreateWindowW(L"MyClass2", L"Child", WS_CHILD,
+		CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, hWnd, nullptr, hInstance, nullptr);
+	otherHwnd = hWnd2;
+
 	if (!hWnd)
 	{
 		return FALSE;
 	}
 
+	CreateSharedMemory(hWnd);
 	CreateChildWindow();
+
+	/*
+	// wait for the child window to have time to be created
+//	Sleep(1000);
+	ReadSharedMemory();
+	//childHwnd = find_main_window(pi.dwProcessId);
+	SetWindowLong(childHwnd, GWL_STYLE, 0);
+	assert(childHwnd != 0);
+
 	SetParent(childHwnd, hWnd);
+	SetParent(hWnd2, hWnd);
 	ShowWindow(hWnd, nCmdShow);
+	ShowWindow(hWnd2, nCmdShow);
 	ShowWindow(childHwnd, nCmdShow);
 
 	// Set the position after the window is shown,
 	// other showing the window won't trigger a repaint
 	SetWindowPos(childHwnd, 0, 0, 0, 400, 400, 0);
-
-
+	SetWindowPos(hWnd2, childHwnd, 200, 0, 400, 400, 0);
+	*/
+	SendMessage(hWnd, WM_USER + 1, 0, 0);
 	return TRUE;
 }
 
@@ -239,8 +323,55 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	{
 		PAINTSTRUCT ps;
 		HDC hdc = BeginPaint(hWnd, &ps);
-		// TODO: Add any drawing code that uses hdc here...
+		if (otherHwnd == hWnd) {
+
+			//    Rectangle function is defined as...
+			//    BOOL Rectangle(hdc, xLeft, yTop, yRight, yBottom);
+
+			//    Drawing a rectangle with just a black pen
+			//    The black pen object is selected and sent to the current device context
+			//  The default brush is WHITE_BRUSH
+			RECT rect;
+
+			GetWindowRect(hWnd, &rect);
+			rect.left = 0;
+			rect.top = 0;
+			HBRUSH hBrush = CreateSolidBrush(RGB(0, 200, 100));
+			SetDCBrushColor(hdc, RGB(0, 200, 100));
+			RECT r;
+			SetRect(&r, 150, 150, 250, 250);
+			FillRect(hdc, &r, hBrush);
+			DeleteObject(hBrush);
+		}
 		EndPaint(hWnd, &ps);
+	}
+	break;
+	case WM_USER + 1:
+	{
+		// wait for the child window to have time to be created
+		//	Sleep(1000);
+		if (ReadSharedMemory()) {
+
+			//childHwnd = find_main_window(pi.dwProcessId);
+			//SetWindowLong(childHwnd, GWL_STYLE, 0);
+			assert(childHwnd != 0);
+			CreateSharedMemory(hWnd);
+			CreateChildWindow();
+			SetParent(childHwnd, hWnd);
+			SetParent(otherHwnd, hWnd);
+			ShowWindow(hWnd, 0xa);
+			ShowWindow(otherHwnd, 0xa);
+			ShowWindow(childHwnd, 0xa);
+
+			// Set the position after the window is shown,
+			// other showing the window won't trigger a repaint
+			SetWindowPos(childHwnd, 0, 0, 0, 400, 400, 0);
+			SetWindowPos(otherHwnd, childHwnd, 200, 0, 400, 400, 0);
+
+		}
+		else {
+			PostMessage(hWnd, WM_USER + 1, 0, 0);
+		}
 	}
 	break;
 	case WM_SIZE:
