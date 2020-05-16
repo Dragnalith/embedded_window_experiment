@@ -165,16 +165,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		rect.top = 0;
 		InvalidateRect(hWnd, &rect, true);
 		UpdateWindow(hWnd);
-	case WM_USER + 1:
-	{
-		RECT rect;
-		GetWindowRect(hWnd, &rect);
-		rect.left = 0;
-		rect.top = 0;
-		InvalidateRect(hWnd, &rect, true);
-		UpdateWindow(hWnd);
-	}
-	break;
 	case WM_PAINT:
 	{
 		PAINTSTRUCT ps;

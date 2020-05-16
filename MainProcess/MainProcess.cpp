@@ -153,6 +153,16 @@ void DestroyChildWindow() {
 
 }
 
+void InvalidateChildWindow() {
+
+	RECT rect;
+	GetWindowRect(childHwnd, &rect);
+	rect.left = 0;
+	rect.top = 0;
+	InvalidateRect(childHwnd, &rect, true);
+	UpdateWindow(childHwnd);
+}
+
 void UpdatePos(HWND hWnd) {
 	SetWindowPos(childHwnd, 0, 0, 0, 200, 200, SWP_NOACTIVATE);
 }
@@ -229,6 +239,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		HDC hdc = BeginPaint(hWnd, &ps);
 		// TODO: Add any drawing code that uses hdc here...
 		EndPaint(hWnd, &ps);
+	}
+	break;
+	case WM_SIZE:
+	{
+		InvalidateChildWindow();
 	}
 	break;
 	case WM_DESTROY:
