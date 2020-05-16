@@ -69,6 +69,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 ATOM MyRegisterClass(HINSTANCE hInstance)
 {
 	WNDCLASSEXW wcex;
+	HBRUSH hBrush = CreateSolidBrush(RGB(200, 0, 0));
+
 
 	wcex.cbSize = sizeof(WNDCLASSEX);
 
@@ -79,7 +81,7 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
 	wcex.hInstance = hInstance;
 	wcex.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_WINDOWSPROJECT1));
 	wcex.hCursor = LoadCursor(nullptr, IDC_ARROW);
-	wcex.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
+	wcex.hbrBackground = hBrush;
 	wcex.lpszMenuName = 0;
 	wcex.lpszClassName = szWindowClass;
 	wcex.hIconSm = LoadIcon(wcex.hInstance, MAKEINTRESOURCE(IDI_SMALL));
@@ -163,6 +165,16 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		rect.top = 0;
 		InvalidateRect(hWnd, &rect, true);
 		UpdateWindow(hWnd);
+	case WM_USER + 1:
+	{
+		RECT rect;
+		GetWindowRect(hWnd, &rect);
+		rect.left = 0;
+		rect.top = 0;
+		InvalidateRect(hWnd, &rect, true);
+		UpdateWindow(hWnd);
+	}
+	break;
 	case WM_PAINT:
 	{
 		PAINTSTRUCT ps;

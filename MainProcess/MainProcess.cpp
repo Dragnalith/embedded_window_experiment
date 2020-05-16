@@ -126,6 +126,7 @@ void CreateChildWindow() {
 
 	TCHAR arg[1024];
 	lstrcpyW(arg, L"ChildWindowProcess.exe noshow");
+	//lstrcpyW(arg, L"notepad.exe");
 
 	BOOL b = CreateProcess(NULL,   // No module name (use command line)
 		arg,        // Command line
@@ -153,14 +154,7 @@ void DestroyChildWindow() {
 }
 
 void UpdatePos(HWND hWnd) {
-	RECT parentRect;
-	RECT childRect;
-	GetWindowRect(hWnd, &parentRect);
-	GetWindowRect(childHwnd, &childRect);
-	childRect.left = parentRect.left + 100;
-	childRect.top = parentRect.top + 100;
-	SetWindowPos(hWnd, 0, parentRect.left, parentRect.top, 800, 800, 0);
-	SetWindowPos(childHwnd, HWND_TOPMOST, parentRect.left + 100, parentRect.top + 100, 200, 200, SWP_NOACTIVATE);
+	SetWindowPos(childHwnd, 0, 0, 0, 200, 200, SWP_NOACTIVATE);
 }
 
 //
@@ -178,7 +172,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 	hInst = hInstance; // Store instance handle in our global variable
 
 	HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
-		CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, nullptr, nullptr, hInstance, nullptr);
+		0, 0, 800, 800, nullptr, nullptr, hInstance, nullptr);
 
 	if (!hWnd)
 	{
@@ -186,11 +180,14 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 	}
 
 	CreateChildWindow();
-
-	UpdatePos(hWnd);
+	SetParent(childHwnd, hWnd);
 	ShowWindow(hWnd, nCmdShow);
 	ShowWindow(childHwnd, nCmdShow);
-	UpdateWindow(hWnd);
+
+	// Set the position after the window is shown,
+	// other showing the window won't trigger a repaint
+	SetWindowPos(childHwnd, 0, 0, 0, 400, 400, 0);
+
 
 	return TRUE;
 }
@@ -232,11 +229,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		HDC hdc = BeginPaint(hWnd, &ps);
 		// TODO: Add any drawing code that uses hdc here...
 		EndPaint(hWnd, &ps);
-	}
-	break;
-	case WM_MOVE:
-	{
-		UpdatePos(hWnd);
 	}
 	break;
 	case WM_DESTROY:
