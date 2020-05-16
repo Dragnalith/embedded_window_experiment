@@ -219,8 +219,13 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		GetWindowRect(hWnd, &rect);
 		rect.left = 0;
 		rect.top = 0;
-		InvalidateRect(hWnd, &rect, true);
-		UpdateWindow(hWnd);
+		if (show) {
+			InvalidateRect(hWnd, &rect, true);
+		}
+		else {
+			InvalidateRect(g_Payload->parentHwnd, &rect, true);
+		}
+
 	}
 	break;
 	case WM_PAINT:

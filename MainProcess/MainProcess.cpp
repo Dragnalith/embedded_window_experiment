@@ -245,6 +245,7 @@ void InvalidateChildWindow() {
 //
 
 HWND otherHwnd;
+HWND parentHwnd;
 BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
 	hInst = hInstance; // Store instance handle in our global variable
@@ -256,6 +257,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 	HWND hWnd2 = CreateWindowW(L"MyClass2", L"Child", WS_CHILD,
 		CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, hWnd, nullptr, hInstance, nullptr);
 	otherHwnd = hWnd2;
+	parentHwnd = hWnd;
 
 	if (!hWnd)
 	{
@@ -349,6 +351,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	case WM_LBUTTONDOWN:
 	{
 		PostMessage(childHwnd, WM_LBUTTONDOWN, wParam, lParam);
+		RECT rect;
+		GetWindowRect(hWnd, &rect);
+		rect.left = 0;
+		rect.top = 0;
+		InvalidateRect(parentHwnd, &rect, true);
 	}
 	break;
 	case WM_USER + 1:
@@ -361,7 +368,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			//SetWindowLong(childHwnd, GWL_STYLE, 0);
 			assert(childHwnd != 0);
 			CreateSharedMemory(hWnd);
-			CreateChildWindow();
 			SetParent(childHwnd, hWnd);
 			SetParent(otherHwnd, hWnd);
 			ShowWindow(hWnd, 0xa);

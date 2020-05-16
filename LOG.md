@@ -11,9 +11,12 @@ V Fix embedded window is scaled according to windows global scale option (high d
   - Just make sure that `SetProcessDpiAwarenessContext` is consistent between process
 ? How to make the focus on the main window not being visible (right now the main window title bar became grey when losing focus)
   - You have to create as a WS_CHILD of the parent process (need to transmit the parent process HWND)
-. How do you create a main process child window remaining on top of the embedded window?
-  - Much harder than expected. Need to be tried with ws_child for child process window and see if it works
-  - I have tried to create a transparent window but that's not obvious
-  - The child window lose the focus when you click on it and the embedded window is behind. That's weird (whatever the background is transparent or not)
+  - The focus is only a concept of overlapped windows, so the child window do not get focus. But it does capture the event instead of its window.
+? How do you create a main process child window remaining on top of the embedded window?
+  - You can create an overlay, which is a ws_child window without any background on top of the embedded one.
+  - To make the window on top of it you use `SetWindowPos(backHwnd (embedded), frontHwnd (overlay), x, y, w, h, 0);`
+  - Everytime an input is capture by the overlay you can route it to the embedded window with `PostMessage` or filter it
+? How do I paint in the overlay window?
+  - Everytime an input is captured you should `InvalidRect` the parent window for the region cover by the embedded window. The parent will send the WM_PAINT event in the right order to its child window.
 . How to make child process die when main process die?
 . How to get the child process window handle with pipe or shared memory?
