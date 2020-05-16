@@ -209,6 +209,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	}
 	break;
 	case WM_LBUTTONDOWN:
+	case WM_RBUTTONDOWN:
+	{
 		g_MouseX = GET_X_LPARAM(lParam);
 		g_MouseY = GET_Y_LPARAM(lParam);
 		g_Count += 1;
@@ -219,6 +221,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		rect.top = 0;
 		InvalidateRect(hWnd, &rect, true);
 		UpdateWindow(hWnd);
+	}
+	break;
 	case WM_PAINT:
 	{
 		PAINTSTRUCT ps;

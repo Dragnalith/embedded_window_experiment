@@ -157,7 +157,7 @@ ATOM MyRegisterClass2(HINSTANCE hInstance)
 	wcex.hInstance = hInstance;
 	wcex.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_MAINPROCESS));
 	wcex.hCursor = LoadCursor(nullptr, IDC_ARROW);
-	wcex.hbrBackground = hBrush;
+	wcex.hbrBackground = nullptr;
 	wcex.lpszMenuName = 0;
 	wcex.lpszClassName = L"MyClass2";
 	wcex.hIconSm = LoadIcon(wcex.hInstance, MAKEINTRESOURCE(IDI_SMALL));
@@ -346,6 +346,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		EndPaint(hWnd, &ps);
 	}
 	break;
+	case WM_LBUTTONDOWN:
+	{
+		PostMessage(childHwnd, WM_LBUTTONDOWN, wParam, lParam);
+	}
+	break;
 	case WM_USER + 1:
 	{
 		// wait for the child window to have time to be created
@@ -365,8 +370,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 			// Set the position after the window is shown,
 			// other showing the window won't trigger a repaint
-			SetWindowPos(childHwnd, 0, 0, 0, 400, 400, 0);
-			SetWindowPos(otherHwnd, childHwnd, 200, 0, 400, 400, 0);
+			SetWindowPos(otherHwnd, 0, 0, 0, 400, 400, 0);
+			SetWindowPos(childHwnd, otherHwnd, 0, 0, 400, 400, 0);
 
 		}
 		else {
@@ -380,7 +385,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	}
 	break;
 	case WM_DESTROY:
-		SendMessage(childHwnd, WM_DESTROY, 0, 0);
+		PostMessage(childHwnd, WM_DESTROY, 0, 0);
 		PostQuitMessage(0);
 		break;
 	default:
