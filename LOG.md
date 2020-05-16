@@ -7,7 +7,9 @@
   - It works with notepad.exe
 V Fix Resize of main process window
   - When resizing the main window, you have to manually invalidate the embedded window to trigger a repaint
+V Fix embedded window is scaled according to windows global scale option (high dpi)
+  - Just make sure that `SetProcessDpiAwarenessContext` is consistent between process
 . How do you create a main process child window remaining on top of the embedded window?
-. How to make child process die when main process die?
 . How to make the focus on the main window not being visible (right now the main window title bar became grey when losing focus)
-  - Try WS_CHILD on the embedded window
+  - Try WS_CHILD on the embedded window: Does not work
+. How to make child process die when main process die?
