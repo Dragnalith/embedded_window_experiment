@@ -26,7 +26,6 @@ const size_t BUF_SIZE = 256;
 struct Payload {
 	std::atomic<bool> is_set = false;
 	HWND hwnd;
-	HWND parentHwnd;
 	char data[64];
 };
 static_assert(sizeof(Payload) < BUF_SIZE, "");
@@ -59,17 +58,14 @@ void CreateSharedMemory(HWND parentHwnd) {
 
 	g_Payload = (Payload*)pBuf;
 	new (g_Payload) Payload();
-	g_Payload->parentHwnd = parentHwnd;
 	assert(g_Payload->is_set.load() == false);
 }
 
 HWND childHwnd = 0;
-bool ReadSharedMemory() {
-	if (g_Payload->is_set.load()) {
+void ReadSharedMemory() {
+	while (!g_Payload->is_set.load()) {
 		childHwnd = g_Payload->hwnd;
-		return true;
 	}
-	return false;
 }
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
@@ -267,26 +263,23 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 	CreateSharedMemory(hWnd);
 	CreateChildWindow();
 
-	/*
-	// wait for the child window to have time to be created
-//	Sleep(1000);
 	ReadSharedMemory();
-	//childHwnd = find_main_window(pi.dwProcessId);
-	SetWindowLong(childHwnd, GWL_STYLE, 0);
-	assert(childHwnd != 0);
 
+	//childHwnd = find_main_window(pi.dwProcessId);
+	//SetWindowLong(childHwnd, GWL_STYLE, 0);
+	assert(childHwnd != 0);
+	CreateSharedMemory(hWnd);
 	SetParent(childHwnd, hWnd);
-	SetParent(hWnd2, hWnd);
-	ShowWindow(hWnd, nCmdShow);
-	ShowWindow(hWnd2, nCmdShow);
-	ShowWindow(childHwnd, nCmdShow);
+	SetParent(otherHwnd, hWnd);
+	ShowWindow(hWnd, 0xa);
+	ShowWindow(otherHwnd, 0xa);
+	ShowWindow(childHwnd, 0xa);
 
 	// Set the position after the window is shown,
 	// other showing the window won't trigger a repaint
-	SetWindowPos(childHwnd, 0, 0, 0, 400, 400, 0);
-	SetWindowPos(hWnd2, childHwnd, 200, 0, 400, 400, 0);
-	*/
-	SendMessage(hWnd, WM_USER + 1, 0, 0);
+	SetWindowPos(otherHwnd, 0, 0, 0, 400, 400, 0);
+	SetWindowPos(childHwnd, otherHwnd, 0, 0, 400, 400, 0);
+
 	return TRUE;
 }
 
@@ -356,33 +349,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		rect.left = 0;
 		rect.top = 0;
 		InvalidateRect(parentHwnd, &rect, true);
-	}
-	break;
-	case WM_USER + 1:
-	{
-		// wait for the child window to have time to be created
-		//	Sleep(1000);
-		if (ReadSharedMemory()) {
-
-			//childHwnd = find_main_window(pi.dwProcessId);
-			//SetWindowLong(childHwnd, GWL_STYLE, 0);
-			assert(childHwnd != 0);
-			CreateSharedMemory(hWnd);
-			SetParent(childHwnd, hWnd);
-			SetParent(otherHwnd, hWnd);
-			ShowWindow(hWnd, 0xa);
-			ShowWindow(otherHwnd, 0xa);
-			ShowWindow(childHwnd, 0xa);
-
-			// Set the position after the window is shown,
-			// other showing the window won't trigger a repaint
-			SetWindowPos(otherHwnd, 0, 0, 0, 400, 400, 0);
-			SetWindowPos(childHwnd, otherHwnd, 0, 0, 400, 400, 0);
-
-		}
-		else {
-			PostMessage(hWnd, WM_USER + 1, 0, 0);
-		}
 	}
 	break;
 	case WM_SIZE:

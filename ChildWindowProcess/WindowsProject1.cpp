@@ -26,7 +26,6 @@ const size_t BUF_SIZE = 256;
 struct Payload {
 	std::atomic<bool> is_set = false;
 	HWND hwnd;
-	HWND parentHwnd;
 	char data[64];
 };
 static_assert(sizeof(Payload) < BUF_SIZE, "");
@@ -144,11 +143,18 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
 	hInst = hInstance; // Store instance handle in our global variable
 
+	HWND hWnd;
 	if (!show) {
 		OpenSharedMemory();
+		HWND parent = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
+			CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, nullptr, nullptr, hInstance, nullptr);
+		hWnd = CreateWindowW(szWindowClass, szTitle, WS_CHILD,
+			CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, parent, nullptr, hInstance, nullptr);
 	}
-	HWND hWnd = CreateWindowW(szWindowClass, szTitle, show ? WS_OVERLAPPEDWINDOW : WS_CHILD,
-		CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, show ? nullptr : g_Payload->parentHwnd, nullptr, hInstance, nullptr);
+	else {
+		hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
+			CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, nullptr, nullptr, hInstance, nullptr);
+	}
 
 	if (!hWnd)
 	{
@@ -223,7 +229,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			InvalidateRect(hWnd, &rect, true);
 		}
 		else {
-			InvalidateRect(g_Payload->parentHwnd, &rect, true);
+			InvalidateRect(GetParent(hWnd), &rect, true);
 		}
 
 	}
