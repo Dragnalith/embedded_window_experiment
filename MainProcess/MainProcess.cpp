@@ -247,7 +247,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 	hInst = hInstance; // Store instance handle in our global variable
 
 	HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
-		0, 0, 800, 800, nullptr, nullptr, hInstance, nullptr);
+		0, 0, 650, 650, nullptr, nullptr, hInstance, nullptr);
 
 
 	HWND hWnd2 = CreateWindowW(L"MyClass2", L"Child", WS_CHILD,
@@ -343,12 +343,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	break;
 	case WM_LBUTTONDOWN:
 	{
-		PostMessage(childHwnd, WM_LBUTTONDOWN, wParam, lParam);
-		RECT rect;
-		GetWindowRect(hWnd, &rect);
-		rect.left = 0;
-		rect.top = 0;
-		InvalidateRect(parentHwnd, &rect, true);
+		if (hWnd == otherHwnd) {
+			PostMessage(childHwnd, WM_LBUTTONDOWN, wParam, lParam);
+			RECT rect;
+			GetWindowRect(hWnd, &rect);
+			rect.left = 0;
+			rect.top = 0;
+			InvalidateRect(parentHwnd, &rect, true);
+		}
 	}
 	break;
 	case WM_SIZE:
